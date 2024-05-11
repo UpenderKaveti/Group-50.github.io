@@ -1,0 +1,267 @@
+---
+title: "Customer Segementaion and Recomendation"
+author: "Group 50"
+format: revealjs
+editor: source
+toc: true
+toc-depth: 1
+slide-number: true
+smaller: false
+scrollable: true 
+execute:
+  echo: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+project_data = read.csv("C:\\Users\\upend\\OneDrive - VNR VIGNANA JYOTHI INSTITUTE OF ENGINEERING & TECHNOLOGY\\Desktop\\Online Retail.csv")
+
+print(project_data)
+```
+```{r}
+summary(project_data)
+```
+```{r}
+nan_rows <- rowSums(is.na(project_data)) > 0
+
+# Remove rows with NaN values
+retail_data <- project_data[!nan_rows, ]
+
+# Now, 'clean_data' does not contain any NaN values
+print(retail_data)
+```
+RFM Analysis: Calculate Recency, Frequency, and Monetary (RFM) values for each customer based on their purchase history.
+Recency: How recently a customer made a purchase.
+Frequency: How often a customer makes a purchase.
+Monetary: How much money a customer spends.
+
+```{r}
+# Load the necessary libraries
+library(dplyr)
+
+# Step 1: Calculate Recency
+
+# Convert 'InvoiceDate' to datetime object
+retail_data$InvoiceDate <- as.POSIXct(retail_data$InvoiceDate, format = "%d-%m-%Y %H:%M")
+
+# Get the most recent date in the dataset
+latest_date <- max(retail_data$InvoiceDate)
+
+# Calculate recency for each customer
+recency_data <- retail_data %>%
+  group_by(CustomerID) %>%
+  summarize(Recency = as.numeric(difftime(latest_date, max(InvoiceDate), units = "days")))
+
+# View the recency data
+print(recency_data)
+```
+
+
+```{r}
+# Assuming you have loaded your dataset into a data frame called 'retail_data'
+
+# Load the required package
+library(dplyr)
+
+# Step 2: Calculate Frequency
+# Count the number of transactions (invoices) for each customer
+frequency_data <- retail_data %>%
+  group_by(CustomerID) %>%
+  summarize(Frequency = n_distinct(InvoiceNo))
+
+# Step 3: Calculate Monetary
+# Calculate the total amount spent (Monetary) for each customer
+monetary_data <- retail_data %>%
+  group_by(CustomerID) %>%
+  summarize(Monetary = sum(Quantity * UnitPrice))
+
+# Merge the RFM metrics into a single dataframe
+rfm_data <- merge(recency_data, frequency_data, by = "CustomerID")
+rfm_data <- merge(rfm_data, monetary_data, by = "CustomerID")
+
+# You now have a dataframe 'rfm_data' containing Recency, Frequency, and Monetary metrics for each customer
+
+```
+
+```{r}
+# Assuming 'recency_data', 'frequency_data', and 'monetary_data' are dataframes containing Recency, Frequency, and Monetary values respectively
+
+# Load the necessary libraries
+library(dplyr)
+library(tidyr)
+
+# Merge RFM dataframes into a single dataframe
+rfm_data <- recency_data %>%
+  inner_join(frequency_data, by = "CustomerID") %>%
+  inner_join(monetary_data, by = "CustomerID")
+
+# Scale the RFM values
+scaled_rfm_data <- rfm_data %>%
+  mutate(
+    Recency_scaled = scale(Recency),
+    Frequency_scaled = scale(Frequency),
+    Monetary_scaled = scale(Monetary)
+  ) %>%
+  select(CustomerID, Recency_scaled, Frequency_scaled, Monetary_scaled)
+
+# View the scaled RFM data
+print(scaled_rfm_data)
+
+```
+
+
+
+```{r}
+# Assuming 'scaled_rfm_data' contains the scaled RFM values
+
+# Load the necessary library
+library(ggplot2)
+
+# Initialize a vector to store the within-cluster sum of squares (WCSS) for each value of K
+wcss <- vector()
+
+# Define the range of K values to try
+k_values <- 1:10  # You can adjust the range based on your specific dataset and requirements
+
+# Calculate WCSS for each value of K
+for (k in k_values) {
+  kmeans_model <- kmeans(scaled_rfm_data[, -1], centers = k)
+  wcss[k] <- kmeans_model$tot.withinss
+}
+
+# Plot the elbow curve
+elbow_plot <- data.frame(K = k_values, WCSS = wcss) %>%
+  ggplot(aes(x = K, y = WCSS)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red", size = 2) +
+  labs(title = "Elbow Method for Optimal K",
+       x = "Number of Clusters (K)",
+       y = "Within-Cluster Sum of Squares (WCSS)") +
+  theme_minimal()
+
+print(elbow_plot)
+
+# Look for the point where the decrease in WCSS starts to diminish
+```
+
+k = 6
+
+```{r}
+# Set the seed for reproducibility
+set.seed(123)
+
+# Fit K-means clustering model with K = 6
+kmeans_model <- kmeans(scaled_rfm_data[, -1], centers = 6)
+
+# Assign cluster labels to each customer
+cluster_labels <- kmeans_model$cluster
+
+# Update the original dataframe with cluster labels
+scaled_rfm_data_with_clusters <- cbind(scaled_rfm_data, Cluster = cluster_labels)
+
+# View the first few rows of the dataframe with cluster labels
+head(scaled_rfm_data_with_clusters)
+```
+
+```{r}
+# Assuming 'scaled_rfm_data' contains the scaled RFM values and 'cluster_assignments' contains the cluster assignments
+
+# Combine cluster assignments with original RFM data
+clustered_rfm_data <- cbind(scaled_rfm_data, Cluster = cluster_labels)
+
+# Summarize RFM values for each cluster
+cluster_summary <- clustered_rfm_data %>%
+  group_by(Cluster) %>%
+  summarize(
+    Avg_Recency = mean(Recency_scaled),
+    Avg_Frequency = mean(Frequency_scaled),
+    Avg_Monetary = mean(Monetary_scaled),
+    Count_Customers = n()
+  )
+
+# Assign meaningful labels to clusters based on RFM values
+cluster_summary$Cluster_Label <- cutree(hclust(dist(cluster_summary[, -5])), 6)
+
+# View the cluster summary with assigned labels
+print(cluster_summary)
+```
+The output provided appears to be a summary of cluster characteristics resulting from K-means clustering. Let's break down what each column represents:
+
+- **Cluster**: An integer indicating the cluster number.
+- **Avg_Recency**: Average standardized recency value for the customers within the cluster. It represents how recently, on average, customers in this cluster made a purchase. Positive values indicate higher recency compared to the overall dataset mean, while negative values indicate lower recency.
+- **Avg_Frequency**: Average standardized frequency value for the customers within the cluster. It represents how frequently, on average, customers in this cluster make purchases. Positive values indicate higher frequency compared to the overall dataset mean, while negative values indicate lower frequency.
+- **Avg_Monetary**: Average standardized monetary value for the customers within the cluster. It represents the average monetary value of purchases made by customers in this cluster. Positive values indicate higher monetary spending compared to the overall dataset mean, while negative values indicate lower monetary spending.
+- **Count_Customers**: The number of customers assigned to the cluster.
+- **Cluster_Label**: An integer representing the label assigned to the cluster. It seems that labels have been assigned based on hierarchical clustering, as mentioned earlier.
+
+For interpretation:
+
+- Cluster 1: Moderate recency, low frequency, low monetary value. This cluster has a moderate number of customers.
+- Cluster 2: Low recency, high frequency, very high monetary value. This cluster has only a few customers but they make high-frequency purchases with substantial monetary value.
+- Cluster 3: Low recency, low frequency, low monetary value. This cluster has a large number of customers who make infrequent and low-value purchases.
+- Cluster 4: Low recency, very high frequency, moderate monetary value. This cluster has a small number of customers who make very frequent purchases with moderate monetary value.
+- Cluster 5: Moderate recency, low frequency, low monetary value. This cluster has a moderate number of customers similar to Cluster 1.
+- Cluster 6: Low recency, high frequency, high monetary value. This cluster has a moderate number of customers who make frequent purchases with relatively high monetary value.
+
+```{r}
+# Assuming 'scaled_rfm_data' contains the scaled RFM values and 'kmeans_model' contains the fitted K-means model
+
+# Calculate WCSS
+wcss <- kmeans_model$tot.withinss
+
+# Print WCSS
+print(paste("WCSS:", wcss))
+
+```
+
+```{r}
+# Print cluster summary
+print(cluster_summary)
+```
+
+```{r}
+# Load the necessary library
+library(arules)
+library(dplyr)
+
+# Group by CustomerID and list all their different purchases
+customer_purchases <- retail_data %>%
+                      group_by(CustomerID) %>%
+                      summarize(Unique_Purchases = paste(unique(StockCode), collapse = ", "))
+
+transactions_list <- strsplit(customer_purchases$Unique_Purchases, ", ")
+transactions <- as(transactions_list, "transactions")
+
+# Mine association rules from the transactions using the Apriori algorithm
+rule1 <- apriori(transactions, parameter = list(support = 0.05, confidence = 0.7))
+
+rule2 <- apriori(transactions, parameter = list(support = 0.05, confidence = 0.7, minlen=3))
+```
+
+```{r}
+distinct_elements <- unique(retail_data$StockCode)
+num_distinct_elements <- length(distinct_elements)
+print(num_distinct_elements)
+# total items
+```
+
+
+```{r}
+distinct_elements <- unique(retail_data$Country)
+num_distinct_elements <- length(distinct_elements)
+print(num_distinct_elements)
+# total Country
+```
+
+```{r}
+distinct_elements <- unique(retail_data$CustomerID)
+num_distinct_elements <- length(distinct_elements)
+print(num_distinct_elements)
+# total Customers
+```
+
+
+
+
+
