@@ -1,1 +1,1 @@
-# Group-50.gitnub.io
+# Group-50.github.io
