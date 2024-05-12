@@ -15,7 +15,7 @@ editor_options:
 ---
 ## Loading data
 ```{r}
-project_data = read.csv("C:\\Users\\upend\\OneDrive - VNR VIGNANA JYOTHI INSTITUTE OF ENGINEERING & TECHNOLOGY\\Desktop\\Online Retail.csv")
+project_data = read.csv("C:\\Users\\sai krishna\\Documents\\Online Retail.csv")
 
 print(project_data)
 ```
@@ -31,18 +31,42 @@ retail_data <- project_data[!nan_rows, ]
 
 print(retail_data)
 ```
+
+## total items
+```{r}
+distinct_elements <- unique(retail_data$StockCode)
+num_distinct_elements <- length(distinct_elements)
+print(num_distinct_elements)
+# total items
+```
+
+## total Country
+```{r}
+distinct_elements <- unique(retail_data$Country)
+num_distinct_elements <- length(distinct_elements)
+print(num_distinct_elements)
+# total Country
+```
+## total Customers
+```{r}
+distinct_elements <- unique(retail_data$CustomerID)
+num_distinct_elements <- length(distinct_elements)
+print(num_distinct_elements)
+# total Customers
+```
+
+## RFM Analysis
+
 RFM Analysis: Calculate Recency, Frequency, and Monetary (RFM) values for each customer based on their purchase history.
 Recency: How recently a customer made a purchase.
 Frequency: How often a customer makes a purchase.
 Monetary: How much money a customer spends.
-
-## RFM Analysis
 ```{r}
 library(dplyr)
 
 # Step 1: Calculate Recency
 
-retail_data$InvoiceDate <- as.POSIXct(retail_data$InvoiceDate, format = "%d-%m-%Y %H:%M")
+retail_data$InvoiceDate <- as.POSIXct(retail_data$InvoiceDate, format = "%m/%d/%Y %H:%M")
 latest_date <- max(retail_data$InvoiceDate)
 recency_data <- retail_data %>%
   group_by(CustomerID) %>%
@@ -206,30 +230,28 @@ inspect(head(rule1,5))
 ```{r}
 inspect(head(rule2,5))
 ```
-## total items
+## Plots
 ```{r}
-distinct_elements <- unique(retail_data$StockCode)
-num_distinct_elements <- length(distinct_elements)
-print(num_distinct_elements)
-# total items
+library(arulesViz)
+
+plot(rule1)
+```
+## Plots
+```{r}
+plot(rule2)
+```
+## Plots
+```{r}
+plot(rule1, method = "grouped", engine = "html")
 ```
 
-## total Country
+## Plots
 ```{r}
-distinct_elements <- unique(retail_data$Country)
-num_distinct_elements <- length(distinct_elements)
-print(num_distinct_elements)
-# total Country
+plot(rule1, method = "matrix", engine = "html") 
 ```
-## total Customers
-```{r}
-distinct_elements <- unique(retail_data$CustomerID)
-num_distinct_elements <- length(distinct_elements)
-print(num_distinct_elements)
-# total Customers
-```
+
+
 
 ## Thank You ....
-
 
 
